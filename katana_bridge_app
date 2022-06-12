@@ -18,7 +18,7 @@ presets = dict()
 
 active_preset = None
 
-# NOTE: (3) CC#3 w/ value > 63 within a 2 second window arms
+# NOTE: (3) CC#80 w/ value > 63 within a 2 second window arms
 #       us for preset capture.  If the next message received is PC 
 #       for value > 10 we capture the current amp state into that 
 #       dictionary slot and persist the entire preset memory to
@@ -63,7 +63,18 @@ def log_scale( value ):
     frac = (value + 1) / 128
     scale = (math.exp(frac)-1)/(math.e-1)
     return int( value * scale )
+
+def linear_scale(value, high=100):
+    frac = (value) / 127
+    return int(frac * high)
             
+def array_value(value):
+    result = [0x00,0x00]
+    result[1] = value % 0x80
+    result[0] = (value // 0x80) % 0x80
+    print(str(value) + "=" + str(result[0]) +":"+ str(result[1]))
+    return result
+
 def load_presets( presets ):
     if os.path.isfile( preset_file ):
         # Read all presets
@@ -112,14 +123,71 @@ def handle_pc( trigger, katana, program ):
     return rec
     
 def handle_cc( trigger, katana, control, value ):
-    if control == 3:
+    if control == 80:
         trigger.detect( value )
     else:
         trigger.clear()
         # All our CC --> sysex mappings here
-        if control == 70:
-            scaled = log_scale(value)
-            katana.volume( scaled )
+        # First the toggle buttons
+        if control == 21:
+            if value > 0:
+                katana.boosttoggle()
+        elif control == 22:
+            if value > 0:
+                katana.delaytoggle()
+        elif control == 23:
+            if value > 0:
+                katana.reverbtoggle()
+        elif control == 24:
+            if value > 0:
+                katana.chorustoggle()
+        elif control == 25:
+            if value > 0:
+                katana.wahtoggle()
+        elif control == 1:
+            scaled = linear_scale(value)
+            katana.prebass(scaled)
+        elif control == 2:
+            scaled = linear_scale(value)
+            katana.premid(scaled)
+        elif control == 3:
+            scaled = linear_scale(value)
+            katana.pretreble(scaled)
+        elif control == 4:
+            scaled = linear_scale(value,2000)
+            scaled = max(1, scaled)
+            arrayval = array_value(scaled)
+            katana.delaytime(arrayval)
+        elif control == 5:
+            scaled = linear_scale(value)
+            katana.delayfeedback(scaled)
+        elif control == 6:
+            scaled = linear_scale(value,120)
+            katana.delaylevel(scaled)
+        elif control == 7:
+            scaled = linear_scale(value)
+            katana.reverbtime(scaled)
+        elif control == 8:
+            scaled = linear_scale(value)
+            katana.reverblevel(scaled)
+        elif control == 9:
+            scaled = linear_scale(value,120)
+            katana.pregain(scaled)
+        elif control == 10:
+            scaled = linear_scale(value,127)
+            katana.volume(scaled)
+        elif control == 11:
+            scaled = linear_scale(value)
+            katana.mastergain(scaled)
+        elif control == 12:
+            scaled = linear_scale(value)
+            katana.chorusdepth(scaled)
+        elif control == 13:
+            scaled = linear_scale(value)
+            katana.chorusintensity(scaled)
+        else:
+            # unmapped, just pass it on
+            katana.send_cc(control, value)
 
 
 
@@ -181,10 +249,7 @@ with mido.open_input(interface, virtual=virt) as commands:
     for msg in commands:
         if msg.type == 'control_change' and msg.channel == listen_ch:
             # print( "%s: ch = %d, ctrl = %d, val = %d" % (msg.type, msg.channel, msg.control, msg.value) )
-            if msg.control >= 16 and msg.control <= 19:
-                katana.send_cc( msg.control, msg.value )
-            else:
-                handle_cc( trigger, katana, msg.control, msg.value )
+            handle_cc( trigger, katana, msg.control, msg.value )
         elif msg.type == 'program_change' and msg.channel == listen_ch:
             # print( "%s: ch = %d, prog = %d" % (msg.type, msg.channel, msg.program) )
             if msg.program >= 0 and msg.program <= 4:

@@ -10,6 +10,7 @@ import syslog
 class Katana:
 
     def __init__( self, portname, channel, clear_input=False ):
+        print("trying to open " + portname)
         self.outport = mido.open_output( portname )
         self.inport = mido.open_input( portname )
 
@@ -22,6 +23,7 @@ class Katana:
         self.cc.channel = channel
 
         self.chunk_count = 0
+        self.target_count = 0
         
         # Thread synchronization around incoming MIDI data. Used only
         # in the case where a single message is expected.  We need to use
@@ -37,6 +39,18 @@ class Katana:
         # Since mido callbacks take only a single parameter, bind
         # the current object into a closure
         self.inport.callback = lambda msg: self._post( msg )
+
+        # turn off all the effects
+        self.delay = 0
+        self.reverb = 0
+        self.chorus = 0
+        self.boost = 0
+        self.wah = 0
+        self.setdelay(self.delay);
+        self.setreverb(self.reverb);
+        self.setchorus(self.chorus);
+        self.setboost(self.boost);
+        self.setwah(self.wah);
 
     # Drain incoming USB buffer by doing polled reads over
     # five seconds
@@ -74,7 +88,7 @@ class Katana:
     # Concatenate caller's prefix and message, add checksum and send
     # as sysex message. Handles both store and query commands.
     def _send( self, prefix, msg ):
-        # print( "DEBUG: msg = ", msg )
+        #print( "DEBUG: msg = ", msg )
         # Calculate Roland cksum on msg only
         accum = 0
         for byte in msg:
@@ -210,6 +224,93 @@ class Katana:
     # Convenience method to set amplifier volume
     def volume( self, value ):
         self.send_sysex_data( VOLUME_PEDAL_ADDR, (value,) )
+
+    # convenience method to turn on or off speficific effects and pedals
+    def wahtoggle(self):
+        if(self.wah > 0):
+            self.wah = 0
+        else:
+            self.wah = 1
+        self.setwah(self.wah)
+
+    def boosttoggle(self):
+        if(self.boost > 0):
+            self.boost = 0
+        else:
+            self.boost = 1
+        self.setboost(self.boost)
+
+    def chorustoggle(self):
+        if(self.chorus > 0):
+            self.chorus = 0
+        else:
+            self.chorus = 1
+        self.setchorus(self.chorus)
+
+    def reverbtoggle(self):
+        if(self.reverb > 0):
+            self.reverb = 0
+        else:
+            self.reverb = 1
+        self.setreverb(self.reverb)
+
+    def delaytoggle(self):
+        if(self.delay > 0):
+            self.delay = 0
+        else:
+            self.delay = 1
+        self.setdelay(self.delay)
+
+    def setwah(self, value):
+        self.send_sysex_data( WAH_SW_ADDR, (value,) )
+
+    def setboost(self, value):
+        self.send_sysex_data( BOOST_SW_ADDR, (value,) )
+
+    def setreverb(self, value):
+        self.send_sysex_data( REVERB_SW_ADDR, (value,) )
+
+    def setchorus(self, value):
+        self.send_sysex_data( CHORUS_SW_ADDR, (value,) )
+
+    def setdelay(self, value):
+        self.send_sysex_data( DELAY1_SW_ADDR, (value,) )
+
+    def pregain(self, value):
+        self.send_sysex_data( PRE_GAIN_ADDR, (value,) )
+
+    def mastergain(self, value):
+        self.send_sysex_data( VOLUME_GAIN_ADDR, (value,) )
+
+    def prebass(self, value):
+        self.send_sysex_data( PRE_BASS_ADDR, (value,) )
+
+    def premid(self, value):
+        self.send_sysex_data( PRE_MID_ADDR, (value,) )
+
+    def pretreble(self, value):
+        self.send_sysex_data( PRE_TREBLE_ADDR, (value,) )
+
+    def delaytime(self, value):
+        self.send_sysex_data( DELAY1_TIME_ADDR, (value[0],value[1]) )
+
+    def delayfeedback(self, value):
+        self.send_sysex_data( DELAY1_FEEDBACK_ADDR, (value,) )
+
+    def delaylevel(self, value):
+        self.send_sysex_data( DELAY1_LEVEL_ADDR, (value,) )
+
+    def reverbtime(self, value):
+        self.send_sysex_data( REVERB_TIME_ADDR, (value,) )
+
+    def reverblevel(self, value):
+        self.send_sysex_data( REVERB_LEVEL_ADDR, (value,) )
+
+    def chorusdepth(self, value):
+        self.send_sysex_data( CHORUS_DEPTH_ADDR, (value,) )
+
+    def chorusintensity(self, value):
+        self.send_sysex_data( CHORUS_INTENSITY_ADDR, (value,) )
 
     # Cycle volume pedal gain to provide audible signal
     def signal( self ):
