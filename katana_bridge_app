@@ -166,6 +166,7 @@ def handle_cc( trigger, katana, control, value ):
             katana.delaylevel(scaled)
         elif control == 7:
             scaled = linear_scale(value)
+            scaled = max(1, scaled)
             katana.reverbtime(scaled)
         elif control == 8:
             scaled = linear_scale(value)
