@@ -25,6 +25,22 @@ class Katana:
         self.chunk_count = 0
         self.target_count = 0
         
+
+        self.colours = {
+            "booster":0,
+            "mod":0,
+            "delay":0,
+            "reverb":0
+        }
+
+        self.buttonstates = {
+        	"delay":0,
+        	"reverb":0,
+        	"mod":0,
+        	"booster":0,
+        	"wah":0
+        }
+
         # Thread synchronization around incoming MIDI data. Used only
         # in the case where a single message is expected.  We need to use
         # a different approach for bulk sysex dumps where an arbitrary 
@@ -41,16 +57,14 @@ class Katana:
         self.inport.callback = lambda msg: self._post( msg )
 
         # turn off all the effects
-        self.delay = 0
-        self.reverb = 0
-        self.chorus = 0
-        self.boost = 0
-        self.wah = 0
-        self.setdelay(self.delay);
-        self.setreverb(self.reverb);
-        self.setchorus(self.chorus);
-        self.setboost(self.boost);
-        self.setwah(self.wah);
+        for key in self.buttonstates.keys():
+            value = self.buttonstates[key]
+            self.sendsw(key, value)
+
+        # turn all effects to green
+        for key in self.colours.keys():
+            value = self.colours[key]
+            self.sendcolourchange(key, value)
 
     # Drain incoming USB buffer by doing polled reads over
     # five seconds
@@ -226,55 +240,9 @@ class Katana:
         self.send_sysex_data( VOLUME_PEDAL_ADDR, (value,) )
 
     # convenience method to turn on or off speficific effects and pedals
-    def wahtoggle(self):
-        if(self.wah > 0):
-            self.wah = 0
-        else:
-            self.wah = 1
-        self.setwah(self.wah)
-
-    def boosttoggle(self):
-        if(self.boost > 0):
-            self.boost = 0
-        else:
-            self.boost = 1
-        self.setboost(self.boost)
-
-    def chorustoggle(self):
-        if(self.chorus > 0):
-            self.chorus = 0
-        else:
-            self.chorus = 1
-        self.setchorus(self.chorus)
-
-    def reverbtoggle(self):
-        if(self.reverb > 0):
-            self.reverb = 0
-        else:
-            self.reverb = 1
-        self.setreverb(self.reverb)
-
-    def delaytoggle(self):
-        if(self.delay > 0):
-            self.delay = 0
-        else:
-            self.delay = 1
-        self.setdelay(self.delay)
-
-    def setwah(self, value):
-        self.send_sysex_data( WAH_SW_ADDR, (value,) )
-
-    def setboost(self, value):
-        self.send_sysex_data( BOOST_SW_ADDR, (value,) )
-
-    def setreverb(self, value):
-        self.send_sysex_data( REVERB_SW_ADDR, (value,) )
-
-    def setchorus(self, value):
-        self.send_sysex_data( CHORUS_SW_ADDR, (value,) )
-
-    def setdelay(self, value):
-        self.send_sysex_data( DELAY1_SW_ADDR, (value,) )
+    def sendsw(self, key, value):
+        addr = SW_ADDR_MAP[key]
+        self.send_sysex_data( addr, (value,) )
 
     def pregain(self, value):
         self.send_sysex_data( PRE_GAIN_ADDR, (value,) )
@@ -306,11 +274,26 @@ class Katana:
     def reverblevel(self, value):
         self.send_sysex_data( REVERB_LEVEL_ADDR, (value,) )
 
-    def chorusdepth(self, value):
-        self.send_sysex_data( CHORUS_DEPTH_ADDR, (value,) )
+    def moddepth(self, value):
+        self.send_sysex_data( MOD_DEPTH_ADDR[self.colours["mod"]], (value,) )
 
-    def chorusintensity(self, value):
-        self.send_sysex_data( CHORUS_INTENSITY_ADDR, (value,) )
+    def modintensity(self, value):
+        self.send_sysex_data( MOD_INTENSITY_ADDR[self.colours["mod"]], (value,) )
+
+    def sendcolourchange(self, key, value):
+        addr = COLOUR_ADDR[key]
+        self.send_sysex_data( addr, (value,) )
+
+    def incrementcolour(self, key):
+        colour = self.colours[key]
+        self.colours[key] = (colour + 1)%3
+        self.sendcolourchange(key, self.colours[key])
+
+    def toggle(self, key):
+        current = self.buttonstates[key]
+        self.buttonstates[key] = (current + 1)%2
+        self.sendsw(key, self.buttonstates[key])
+
 
     # Cycle volume pedal gain to provide audible signal
     def signal( self ):
