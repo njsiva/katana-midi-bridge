@@ -18,6 +18,14 @@ presets = dict()
 
 active_preset = None
 
+control_map = {
+    21: "booster",
+    22: "delay",
+    23: "reverb",
+    24: "mod",
+    25: "wah"
+}
+
 # NOTE: (3) CC#80 w/ value > 63 within a 2 second window arms
 #       us for preset capture.  If the next message received is PC 
 #       for value > 10 we capture the current amp state into that 
@@ -30,6 +38,13 @@ class Trigger:
         self.armed = False
         self.starttime = 0
         self.count = 0
+        self.buttoncounts = {
+            21:0,
+            22:0,
+            23:0,
+            24:0,
+            25:0
+        }
 
     def clear( self ):
         self.armed = False
@@ -57,6 +72,32 @@ class Trigger:
         if self.count == 3:
             self.count = 0
             self.armed = True
+
+    def detect_double(self, value):
+        now = time.time()
+        prevcount = self.buttoncounts[value]
+        if prevcount == 0 or now - self.starttime > 2:
+            # State-machine init.  One of these applies:
+            #
+            # - We were armed, but didn't follow up with a PC
+            # - First time we've seen the signal since starting
+            # - First time we've seen the signal since previous arming
+            # - Too much time elapsed since the last signal
+            self.starttime = now
+
+            # reset all others to zero except current
+            for key in self.buttoncounts.keys():
+                if key == value:
+                    self.buttoncounts[key] = 1
+                else:
+                    self.buttoncounts[key] = 0
+            return False        
+        else:
+            # Within time window and a double click, return true
+            for key in self.buttoncounts.keys():
+                self.buttoncounts[key] = 0
+            return True        
+
 
 def log_scale( value ):
     if value == 0: return 0
@@ -123,28 +164,29 @@ def handle_pc( trigger, katana, program ):
     return rec
     
 def handle_cc( trigger, katana, control, value ):
+    print("got control " + str(control) + " value " + str(value))
     if control == 80:
         trigger.detect( value )
     else:
         trigger.clear()
         # All our CC --> sysex mappings here
         # First the toggle buttons
-        if control == 21:
+        isdouble = False
+        # is it an SW or a parameter?
+        if control in control_map.keys():
             if value > 0:
-                katana.boosttoggle()
-        elif control == 22:
-            if value > 0:
-                katana.delaytoggle()
-        elif control == 23:
-            if value > 0:
-                katana.reverbtoggle()
-        elif control == 24:
-            if value > 0:
-                katana.chorustoggle()
-        elif control == 25:
-            if value > 0:
-                katana.wahtoggle()
+                if(control >= 21 and control <= 24):
+                    isdouble = trigger.detect_double(control)
+
+                # if double click, then change colour first
+                if isdouble:
+                    katana.incrementcolour(control_map[control])
+
+                # since this is a momentary control, only toggle if it is an
+                # downpush
+                katana.toggle(control_map[control])
         elif control == 1:
+            print("doing 1 things")
             scaled = linear_scale(value)
             katana.prebass(scaled)
         elif control == 2:
@@ -175,19 +217,20 @@ def handle_cc( trigger, katana, control, value ):
             scaled = linear_scale(value,120)
             katana.pregain(scaled)
         elif control == 10:
-            scaled = linear_scale(value,127)
+            scaled = linear_scale(value,120)
             katana.volume(scaled)
         elif control == 11:
             scaled = linear_scale(value)
             katana.mastergain(scaled)
         elif control == 12:
             scaled = linear_scale(value)
-            katana.chorusdepth(scaled)
+            katana.moddepth(scaled)
         elif control == 13:
             scaled = linear_scale(value)
-            katana.chorusintensity(scaled)
+            katana.modintensity(scaled)
         else:
             # unmapped, just pass it on
+            print("doing unmapped things")
             katana.send_cc(control, value)
 
 
@@ -249,10 +292,10 @@ trigger = Trigger()
 with mido.open_input(interface, virtual=virt) as commands:
     for msg in commands:
         if msg.type == 'control_change' and msg.channel == listen_ch:
-            # print( "%s: ch = %d, ctrl = %d, val = %d" % (msg.type, msg.channel, msg.control, msg.value) )
+            print( "%s: ch = %d, ctrl = %d, val = %d" % (msg.type, msg.channel, msg.control, msg.value) )
             handle_cc( trigger, katana, msg.control, msg.value )
         elif msg.type == 'program_change' and msg.channel == listen_ch:
-            # print( "%s: ch = %d, prog = %d" % (msg.type, msg.channel, msg.program) )
+            print( "%s: ch = %d, prog = %d" % (msg.type, msg.channel, msg.program) )
             if msg.program >= 0 and msg.program <= 4:
                 katana.send_pc( msg.program )
                 active_preset = None
