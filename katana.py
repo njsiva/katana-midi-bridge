@@ -102,7 +102,7 @@ class Katana:
     # Concatenate caller's prefix and message, add checksum and send
     # as sysex message. Handles both store and query commands.
     def _send( self, prefix, msg ):
-        #print( "DEBUG: msg = ", msg )
+        print( "seding: msg = ", msg )
         # Calculate Roland cksum on msg only
         accum = 0
         for byte in msg:
