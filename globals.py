@@ -15,7 +15,11 @@ CURRENT_PRESET_ADDR = ( 0x00, 0x01, 0x00, 0x00 )
 CURRENT_PRESET_LEN = 0x02
 
 # Main Volume, emulate volume pedal?
-VOLUME_PEDAL_ADDR = ( 0x60, 0x00, 0x05, 0x61 )
+# Uncomment this for main volume volume pedal emulation
+#VOLUME_PEDAL_ADDR = ( 0x60, 0x00, 0x05, 0x61 )
+# Uncomment this for pre-amp volume knob. The advantage of this is increasing
+# volume pre any other other patch being applied (based on signal chain)
+VOLUME_PEDAL_ADDR = ( 0x60, 0x00, 0x00, 0x28 )
 #VOLUME_GAIN_ADDR = ( 0x60, 0x00, 0x00, 0x28 )
 VOLUME_GAIN_ADDR = ( 0x60, 0x00, 0x00, 0x12 )
 
