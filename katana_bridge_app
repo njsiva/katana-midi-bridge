@@ -101,7 +101,7 @@ class Trigger:
 
     def islongpress(self):
         now = time.time()
-        return (now - self.starttime) > 1:
+        return (now - self.starttime) > 1
 
 
 def log_scale( value ):
@@ -192,7 +192,7 @@ def handle_cc( trigger, katana, control, value ):
                 katana.toggle(control_map[control])
             else:
                 longpress = trigger.islongpress()
-                print("Is this a long press? - " + longpress)
+                print("Is this a long press? - " + str(longpress))
                 # TODO: do some long press stuff here. Example, toggle Fx?
         elif control == 1:
             scaled = linear_scale(value)
