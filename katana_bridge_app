@@ -38,6 +38,7 @@ class Trigger:
         self.armed = False
         self.starttime = 0
         self.count = 0
+        self.longpress = False
         self.buttoncounts = {
             21:0,
             22:0,
@@ -97,6 +98,10 @@ class Trigger:
             for key in self.buttoncounts.keys():
                 self.buttoncounts[key] = 0
             return True        
+
+    def islongpress(self):
+        now = time.time()
+        return (now - self.starttime) > 1:
 
 
 def log_scale( value ):
@@ -185,8 +190,11 @@ def handle_cc( trigger, katana, control, value ):
                 # since this is a momentary control, only toggle if it is an
                 # downpush
                 katana.toggle(control_map[control])
+            else:
+                longpress = trigger.islongpress()
+                print("Is this a long press? - " + longpress)
+                # TODO: do some long press stuff here. Example, toggle Fx?
         elif control == 1:
-            print("doing 1 things")
             scaled = linear_scale(value)
             katana.prebass(scaled)
         elif control == 2:
@@ -228,9 +236,15 @@ def handle_cc( trigger, katana, control, value ):
         elif control == 13:
             scaled = linear_scale(value)
             katana.modintensity(scaled)
+        elif control == 14:
+            # Nothing here for now
+            scaled = linear_scale(value)
+        elif control == 15:
+            # Nothing here for now
+            scaled = linear_scale(value)
         else:
             # unmapped, just pass it on
-            print("doing unmapped things")
+            print("warning: doing unmapped things")
             katana.send_cc(control, value)
 
 
